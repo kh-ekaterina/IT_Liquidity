@@ -1,0 +1,135 @@
+drop database if exists dbaseorderlog;
+create database if not exists dbaseorderlog;
+use dbaseorderlog;
+DROP TABLE IF EXISTS Orderlog;
+create table Orderlog (
+NO INT PRIMARY KEY not null, 
+SECCODE text, 
+BUYSELL CHAR(1), 
+TIME INT, 
+ORDERNO INT (1), 
+ACTION INT, 
+PRICE Float, 
+VOLUME INT, 
+TRADENO text, 
+TRADEPRICE text
+); 
+
+SET autocommit =0;
+SET unique_checks = 0;
+SET foreign_key_checks = 0;
+
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 5.7/Uploads/OrderLog20150917.csv' 
+INTO TABLE Orderlog 
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\r\n'
+IGNORE 1 LINES
+(NO,SECCODE,BUYSELL,TIME,ORDERNO,ACTION,PRICE,VOLUME,TRADENO,TRADEPRICE);
+
+COMMIT;
+
+SET unique_checks = 1;
+SET foreign_key_checks = 1;
+
+SELECT *,
+If (
+NO is NULL or NO =''
+or
+SECCODE is NULL or SECCODE =''
+or
+BUYSELL is NULL or BUYSELL =''
+or
+TIME is NULL or TIME =''
+or
+ORDERNO is NULL or ORDERNO =''
+or
+ACTION is NULL or ACTION =''
+or
+PRICE is NULL or PRICE =''
+or
+VOLUME is NULL or VOLUME = '', 'DATA IS REQUIRED','COMPLETE DATA' 
+) as `NULL AND GAPS CHECK` from dbaseorderlog.Orderlog;
+
+SELECT *,
+If (
+NO < 0
+or
+SECCODE < 0
+or
+BUYSELL <0
+or
+TIME < 0
+or
+ORDERNO < 0
+or
+ACTION < 0
+or
+PRICE < 0
+or
+VOLUME is NULL or VOLUME < 0, 'NEGATIVE NUMBERS ARE NOT PERMITTED','NO NEGATIVE NUMBERS WERE FOUND' 
+) as `NEGATIVE NUMBERS CHECK` from dbaseorderlog.Orderlog;
+
+SELECT *,
+If (
+length(SECCODE) = 5 or length(SECCODE) = 4 or length(SECCODE) = 12, 'data correct','data unidentified' 
+) as `DATA CHECK` from dbaseorderlog.Orderlog;
+
+DROP TABLE IF EXISTS Classifier;
+create table if not exists Classifier (
+INSTRUMENT_ID int,
+INSTRUMENT_TYPE text,
+TRADE_CODE text
+); 
+
+SET autocommit =0;
+SET unique_checks = 0;
+SET foreign_key_checks = 0;
+
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 5.7/Uploads/securityqualifier.csv' 
+INTO TABLE Classifier 
+fields terminated by ','
+lines terminated by '\r\n'
+ignore 1 lines
+(INSTRUMENT_ID,INSTRUMENT_TYPE,TRADE_CODE);
+
+COMMIT;
+
+SET unique_checks = 1;
+SET foreign_key_checks = 1;
+
+DROP TABLE IF EXISTS Ordinary_Shares;
+create table if not exists Ordinary_Shares
+SELECT SECCODE,BUYSELL,TIME,ORDERNO,ACTION,PRICE,VOLUME,TRADENO,TRADEPRICE 
+FROM orderlog JOIN classifier
+on SECCODE=TRADE_CODE
+where INSTRUMENT_TYPE='Ordinary share';
+
+DROP TABLE IF EXISTS Preferred_Shares;
+create table if not exists Preferred_Shares
+SELECT SECCODE,BUYSELL,TIME,ORDERNO,ACTION,PRICE,VOLUME,TRADENO,TRADEPRICE 
+FROM orderlog JOIN classifier
+on SECCODE=TRADE_CODE
+where INSTRUMENT_TYPE='preferred shares';
+
+DROP TABLE IF EXISTS Bonds;
+create table if not exists Bonds
+SELECT SECCODE,BUYSELL,TIME,ORDERNO,ACTION,PRICE,VOLUME,TRADENO,TRADEPRICE 
+FROM orderlog JOIN classifier
+on SECCODE=TRADE_CODE
+where INSTRUMENT_TYPE='Bond'
+or INSTRUMENT_TYPE='Corporate bond' 
+or INSTRUMENT_TYPE='Subfederal bond' 
+or INSTRUMENT_TYPE='Bonds of a foreign issuer' 
+or INSTRUMENT_TYPE='Eurobonds'
+or INSTRUMENT_TYPE='Federal loan bond';
+
+select * from dbaseorderlog.Ordinary_shares;
+select * from dbaseorderlog.Preferred_Shares;
+select * from dbaseorderlog.Bonds;
+
+select SECCODE, count(SECCODE) 
+from Ordinary_Shares 
+group by SECCODE 
+order by count(SECCODE) desc 
+limit 1;
