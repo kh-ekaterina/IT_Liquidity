@@ -18,7 +18,7 @@ result1 = cursor.fetchmany(15000)
 print('Поток заявок на продажу по тикеру',result1)
 
 query2 = f'select PRICE, VOLUME from Orderlog where SECCODE="{SEC_CODE}" and BUYSELL="B" and time <={timestamp} ' \
-    f'and PRICE > 0 group by PRICE order by PRICE ASC'
+    f'and PRICE > 0 group by PRICE order by PRICE desc'
 cursor.execute(query2)
 result2 = cursor.fetchmany(15000)
 print('Поток заявок на покупку по тикеру',result2)
