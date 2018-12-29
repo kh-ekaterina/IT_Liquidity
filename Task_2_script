@@ -1,5 +1,4 @@
 import mysql.connector
-import numpy as np
 
 cnx = mysql.connector.connect(user='root', password='psw1612', database='dbaseorderlog')
 cursor = cnx.cursor()
