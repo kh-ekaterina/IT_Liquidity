@@ -1,0 +1,49 @@
+import mysql.connector
+import numpy as np
+
+cnx = mysql.connector.connect(user='root', password='psw1612', database='dbaseorderlog')
+cursor = cnx.cursor()
+
+print('Введите Тикер:')
+SEC_CODE = input()
+
+
+print('Введите время (9 знаков):')
+timestamp = input()
+
+
+query1 = f'select PRICE, VOLUME from Orderlog where SECCODE="{SEC_CODE}" and BUYSELL="S" and time <={timestamp} ' \
+    f'and PRICE > 0 group by PRICE order by PRICE desc'
+cursor.execute(query1)
+result1 = cursor.fetchmany(15000)
+print('Поток заявок на продажу по тикеру',result1)
+
+query2 = f'select PRICE, VOLUME from Orderlog where SECCODE="{SEC_CODE}" and BUYSELL="B" and time <={timestamp} ' \
+    f'and PRICE > 0 group by PRICE order by PRICE ASC'
+cursor.execute(query2)
+result2 = cursor.fetchmany(15000)
+print('Поток заявок на покупку по тикеру',result2)
+
+best_asks = sorted(result1, key=lambda n: n[0])[:20]
+best_bids = sorted(result2, key=lambda n: -n[0])[:20]
+print('best_bids:', best_bids)
+print('best_asks:', best_asks)
+
+from prettytable import PrettyTable
+Order_book = PrettyTable()
+Bid_price, Bid_volume = zip(*best_bids)
+Ask_price, Ask_volume = zip(*best_asks)
+Order_book.add_column("Bid volume", Bid_volume)
+Order_book.add_column("Bid_price", Bid_price)
+Order_book.add_column("Ask_price", Ask_price)
+Order_book.add_column("Ask_volume", Ask_volume)
+print(Order_book)
+
+import matplotlib.pyplot as plt
+plt.bar(*zip(*best_asks), label='Ask', color='red')
+plt.bar(*zip(*best_bids), label='Bid', color='green')
+plt.ylabel('Volume')
+plt.xlabel('Price')
+plt.title('Depth of Market')
+plt.legend(loc='upper right')
+plt.show()
